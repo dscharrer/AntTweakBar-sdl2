@@ -22,6 +22,7 @@
 #include "TwGraph.h"
 #include "AntPerfTimer.h"
 
+#include "SDL_mouse.h"
 
 //#define BENCH // uncomment to activate benchmarks
 
@@ -282,18 +283,8 @@ struct CTwMgr
     bool                m_IsRepeatingMousePressed;
     double              m_LastDrawTime;
 
-    #if defined(ANT_WINDOWS)
-        typedef HCURSOR CCursor;
+        typedef SDL_Cursor * CCursor;
         CCursor         PixmapCursor(int _CurIdx);
-    #elif defined(ANT_UNIX)
-        typedef Cursor  CCursor;
-        CCursor         PixmapCursor(int _CurIdx);
-        Display *       m_CurrentXDisplay;
-        Window          m_CurrentXWindow;
-    #elif defined(ANT_OSX)
-        typedef NSCursor * CCursor;
-        CCursor         PixmapCursor(int _CurIdx);
-    #endif  // defined(ANT_UNIX)
     bool                m_CursorsCreated;
     void                CreateCursors();
     void                FreeCursors();
@@ -489,23 +480,12 @@ struct CQuaternionExt
 struct CTwFPU
 {
     CTwFPU()    
-    { 
-    #ifdef ANT_WINDOWS
-        state0 = _controlfp(0, 0); 
-        if( (state0&MCW_PC)==_PC_24 )   // we need at least _PC_53
-            _controlfp(_PC_53, MCW_PC);
-    #else
+    {
         state0 = 0;
-    #endif
     }
     ~CTwFPU()
     {
-    #ifdef ANT_WINDOWS      
-        if( (state0&MCW_PC)==_PC_24 )
-            _controlfp(_PC_24, MCW_PC);
-    #else
         state0 = 0;
-    #endif
     }
 private:
     unsigned int state0;

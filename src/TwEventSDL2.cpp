@@ -12,11 +12,10 @@
 //  ---------------------------------------------------------------------------
 
 
-#include "MiniSDL13.h" // a subset of SDL.h needed to compile TwEventSDL.c
-// note: AntTweakBar.dll does not need to link with SDL, 
-// it just needs some definitions for its helper functions.
+#include "SDL.h"
 
 #include <AntTweakBar.h>
+#include "TwPrecomp.h"
 
 
 //  The way SDL handles keyboard events has changed between version 1.2
@@ -28,7 +27,7 @@
 
 //  TwEventSDL returns zero if msg has not been handled, 
 //  and a non-zero value if it has been handled by the AntTweakBar library.
-int TW_CALL TwEventSDL13(const void *sdlEvent)
+int  TW_CALL TwEventSDL(const void *sdlEvent, unsigned char sdlMajorVersion, unsigned char sdlMinorVersion)
 {
     int handled = 0;
     static int s_KeyMod = 0;
@@ -118,10 +117,16 @@ int TW_CALL TwEventSDL13(const void *sdlEvent)
         else
             handled = TwMouseButton((event->type==SDL_MOUSEBUTTONUP)?TW_MOUSE_RELEASED:TW_MOUSE_PRESSED, (TwMouseButtonID)event->button.button);
         break;
-    case SDL_VIDEORESIZE:
-        // tell the new size to TweakBar
-        TwWindowSize(event->resize.w, event->resize.h);
-        // do not set 'handled', SDL_VIDEORESIZE may be also processed by the calling application
+
+     case SDL_WINDOWEVENT:
+        switch( event->window.event )
+        {
+        case SDL_WINDOWEVENT_SIZE_CHANGED:
+            // tell the new size to TweakBar
+            TwWindowSize(event->window.data1, event->window.data2);
+            // do not set 'handled', SDL_VIDEORESIZE may be also processed by the calling application
+            break;
+        }
         break;
     }
 

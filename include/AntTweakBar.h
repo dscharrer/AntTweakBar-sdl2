@@ -193,10 +193,6 @@ TW_API int      TW_CALL TwSetParam(TwBar *bar, const char *varName, const char *
 
 typedef enum ETwGraphAPI
 {
-    TW_OPENGL           = 1,
-    TW_DIRECT3D9        = 2,
-    TW_DIRECT3D10       = 3,
-    TW_DIRECT3D11       = 4,
     TW_OPENGL_CORE      = 5
 } TwGraphAPI;
 
@@ -285,17 +281,6 @@ TW_API void     TW_CALL TwHandleErrors(TwErrorHandler errorHandler);
 //  They call TwKeyPressed, TwMouse* and TwWindowSize for you (implemented in
 //  files TwEventWin.c TwEventSDL*.c TwEventGLFW.c TwEventGLUT.c)
 // ----------------------------------------------------------------------------
-
-// For Windows message proc
-#ifndef _W64    // Microsoft specific (detection of 64 bits portability issues)
-#   define _W64
-#endif  // _W64
-#ifdef _WIN64
-    TW_API int  TW_CALL TwEventWin(void *wnd, unsigned int msg, unsigned __int64 _W64 wParam, __int64 _W64 lParam);
-#else
-    TW_API int  TW_CALL TwEventWin(void *wnd, unsigned int msg, unsigned int _W64 wParam, int _W64 lParam);
-#endif
-#define TwEventWin32    TwEventWin // For compatibility with AntTweakBar versions prior to 1.11
 
 // For libSDL event loop
 TW_API int      TW_CALL TwEventSDL(const void *sdlEvent, unsigned char sdlMajorVersion, unsigned char sdlMinorVersion);

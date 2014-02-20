@@ -146,7 +146,7 @@ CTexFont *TwGenerateFont(const unsigned char *_Bitmap, int _BmWidth, int _BmHeig
     assert( g_TwMgr!=NULL );
     if( g_TwMgr )
     {
-        if( g_TwMgr->m_GraphAPI==TW_OPENGL || g_TwMgr->m_GraphAPI==TW_OPENGL_CORE )
+        if( g_TwMgr->m_GraphAPI==TW_OPENGL_CORE )
         {
             du = 0;
             dv = 0;

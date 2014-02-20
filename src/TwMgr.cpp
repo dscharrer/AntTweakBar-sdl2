@@ -13,21 +13,11 @@
 #include "TwMgr.h"
 #include "TwBar.h"
 #include "TwFonts.h"
-#include "TwOpenGL.h"
 #include "TwOpenGLCore.h"
-#ifdef ANT_WINDOWS
-#   include "TwDirect3D9.h"
-#   include "TwDirect3D10.h"
-#   include "TwDirect3D11.h"
-#   include "resource.h"
-#   ifdef _DEBUG
-#       include <crtdbg.h>
-#   endif // _DEBUG
-#endif // ANT_WINDOWS
 
-#if !defined(ANT_WINDOWS)
+#if !defined(_WIN32)
 #   define _snprintf snprintf
-#endif  // defined(ANT_WINDOWS)
+#endif
 
 
 using namespace std;
@@ -78,13 +68,9 @@ char g_ErrParse[512];
 
 void ANT_CALL TwGlobalError(const char *_ErrorMessage);
 
-#if defined(ANT_UNIX) || defined(ANT_OSX)
+#if !defined(_WIN32)
 #define _stricmp strcasecmp
 #define _strdup strdup
-#endif
-
-#ifdef ANT_WINDOWS
-    bool g_UseCurRsc = true;    // use dll resources for rotoslider cursors
 #endif
 
 //  ---------------------------------------------------------------------------
@@ -175,10 +161,7 @@ void ANT_CALL CColorExt::InitColor32CB(void *_ExtValue, void *_ClientData)
         ext->m_HLS = false;
         ext->m_HasAlpha = false;
         ext->m_CanHaveAlpha = true;
-        if( g_TwMgr && g_TwMgr->m_GraphAPI==TW_DIRECT3D9 ) // D3D10 now use OGL rgba order!
-            ext->m_OGL = false;
-        else
-            ext->m_OGL = true;
+        ext->m_OGL = true;
         ext->m_PrevConvertedColor = Color32FromARGBi(ext->A, ext->R, ext->G, ext->B);
         ext->m_StructProxy = (CTwMgr::CStructProxy *)_ClientData;
     }
@@ -1745,44 +1728,8 @@ static int TwCreateGraph(ETwGraphAPI _GraphAPI)
 
     switch( _GraphAPI )
     {
-    case TW_OPENGL:
-        g_TwMgr->m_Graph = new CTwGraphOpenGL;
-        break;
     case TW_OPENGL_CORE:
         g_TwMgr->m_Graph = new CTwGraphOpenGLCore;
-        break;
-    case TW_DIRECT3D9:
-        #ifdef ANT_WINDOWS
-            if( g_TwMgr->m_Device!=NULL )
-                g_TwMgr->m_Graph = new CTwGraphDirect3D9;
-            else
-            {
-                g_TwMgr->SetLastError(g_ErrBadDevice);
-                return 0;
-            }
-        #endif // ANT_WINDOWS
-        break;
-    case TW_DIRECT3D10:
-        #ifdef ANT_WINDOWS
-            if( g_TwMgr->m_Device!=NULL )
-                g_TwMgr->m_Graph = new CTwGraphDirect3D10;
-            else
-            {
-                g_TwMgr->SetLastError(g_ErrBadDevice);
-                return 0;
-            }
-        #endif // ANT_WINDOWS
-        break;
-    case TW_DIRECT3D11:
-        #ifdef ANT_WINDOWS
-            if( g_TwMgr->m_Device!=NULL )
-                g_TwMgr->m_Graph = new CTwGraphDirect3D11;
-            else
-            {
-                g_TwMgr->SetLastError(g_ErrBadDevice);
-                return 0;
-            }
-        #endif // ANT_WINDOWS
         break;
     }
 
@@ -1805,11 +1752,7 @@ static inline int TwFreeAsyncDrawing()
         PerfTimer timer;
         while( g_TwMgr->m_Graph->IsDrawing() && timer.GetTime()<SLEEP_MAX )
         {
-            #if defined(ANT_WINDOWS)
-                Sleep(1); // milliseconds
-            #elif defined(ANT_UNIX) || defined(ANT_OSX)
-                usleep(1000); // microseconds
-            #endif
+            SDL_Delay(1); // milliseconds
         }
         if( g_TwMgr->m_Graph->IsDrawing() )
         {
@@ -1831,11 +1774,7 @@ static inline int TwFreeAsyncProcessing()
         PerfTimer timer;
         while( g_TwMgr->IsProcessing() && timer.GetTime()<SLEEP_MAX )
         {
-            #if defined(ANT_WINDOWS)
-                Sleep(1); // milliseconds
-            #elif defined(ANT_UNIX) 
-                usleep(1000); // microseconds
-            #endif
+            SDL_Delay(1); // milliseconds
         }
         if( g_TwMgr->IsProcessing() )
         {
@@ -1900,7 +1839,7 @@ static int TwInitMgr()
 
 int ANT_CALL TwInit(ETwGraphAPI _GraphAPI, void *_Device)
 {
-#if defined(_DEBUG) && defined(ANT_WINDOWS)
+#if defined(_DEBUG) && defined(_WIN32)
     _CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF|_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF));
 #endif
 
@@ -2077,17 +2016,8 @@ int ANT_CALL TwDraw()
         return 0;
 
     // Create cursors
-    #if defined(ANT_WINDOWS) || defined(ANT_OSX)
-        if( !g_TwMgr->m_CursorsCreated )
-            g_TwMgr->CreateCursors();
-    #elif defined(ANT_UNIX)
-        if( !g_TwMgr->m_CurrentXDisplay )
-            g_TwMgr->m_CurrentXDisplay = glXGetCurrentDisplay();
-        if( !g_TwMgr->m_CurrentXWindow )
-            g_TwMgr->m_CurrentXWindow = glXGetCurrentDrawable();
-        if( g_TwMgr->m_CurrentXDisplay && !g_TwMgr->m_CursorsCreated )
-            g_TwMgr->CreateCursors();
-    #endif
+    if( !g_TwMgr->m_CursorsCreated )
+        g_TwMgr->CreateCursors();
 
     // Autorepeat TW_MOUSE_PRESSED
     double CurrTime = g_TwMgr->m_Timer.GetTime();
@@ -2301,11 +2231,7 @@ CTwMgr::CTwMgr(ETwGraphAPI _GraphAPI, void *_Device, int _WndID)
     m_OverlapContent = false;
     m_Terminating = false;
     
-    m_CursorsCreated = false;   
-    #if defined(ANT_UNIX)
-        m_CurrentXDisplay = NULL;
-        m_CurrentXWindow = 0;
-    #endif  // defined(ANT_UNIX)
+    m_CursorsCreated = false;
 
     m_CopyCDStringToClient = g_InitCopyCDStringToClient;
     m_CopyStdStringToClient = g_InitCopyStdStringToClient;
@@ -2868,11 +2794,11 @@ void ANT_CALL TwGlobalError(const char *_ErrorMessage)  // to be called when g_T
     if( g_ErrorHandler==NULL )
     {
         fprintf(stderr, "ERROR(AntTweakBar) >> %s\n", _ErrorMessage);
-    #ifdef ANT_WINDOWS
+    #ifdef _WIN32
         OutputDebugString("ERROR(AntTweakBar) >> ");
         OutputDebugString(_ErrorMessage);
         OutputDebugString("\n");
-    #endif // ANT_WINDOWS
+    #endif
     }
     else
         g_ErrorHandler(_ErrorMessage);
@@ -2899,7 +2825,7 @@ void CTwMgr::SetLastError(const char *_ErrorMessage)    // _ErrorMessage must be
         if( m_CurrentDbgFile!=NULL && strlen(m_CurrentDbgFile)>0 && m_CurrentDbgLine>0 )
             fprintf(stderr, "%s(%d): ", m_CurrentDbgFile, m_CurrentDbgLine);
         fprintf(stderr, "ERROR(AntTweakBar) >> %s\n", m_LastError);
-    #ifdef ANT_WINDOWS
+    #ifdef _WIN32
         if( m_CurrentDbgFile!=NULL && strlen(m_CurrentDbgFile)>0 && m_CurrentDbgLine>0 )
         {
             OutputDebugString(m_CurrentDbgFile);
@@ -2910,7 +2836,7 @@ void CTwMgr::SetLastError(const char *_ErrorMessage)    // _ErrorMessage must be
         OutputDebugString("ERROR(AntTweakBar) >> ");
         OutputDebugString(m_LastError);
         OutputDebugString("\n");
-    #endif // ANT_WINDOWS
+    #endif
     }
     else
         g_ErrorHandler(_ErrorMessage);
@@ -6212,57 +6138,39 @@ void CTwMgr::UpdateHelpBar()
 
 //  ---------------------------------------------------------------------------
 
-#if defined(ANT_WINDOWS)
-
 #include "res/TwXCursors.h"
 
 void CTwMgr::CreateCursors()
 {
     if( m_CursorsCreated )
         return;
-    m_CursorArrow = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_ARROW));
-    m_CursorMove = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZEALL));
-    m_CursorWE = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZEWE));
-    m_CursorNS = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZENS));
-    m_CursorTopRight = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZENESW));
-    m_CursorTopLeft = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZENWSE));
-    m_CursorBottomLeft = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZENESW));
-    m_CursorBottomRight = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_SIZENWSE));
-    m_CursorHelp = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_HELP));
-    m_CursorCross = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_CROSS));
-    m_CursorUpArrow = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_UPARROW));
-    m_CursorNo = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_NO));
-    m_CursorIBeam = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_IBEAM));
-    #ifdef IDC_HAND
-        m_CursorHand = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_HAND));
-    #else
-        m_CursorHand = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_UPARROW));
-    #endif
+    m_CursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    m_CursorMove = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    m_CursorWE = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+    m_CursorNS = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    m_CursorTopRight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+    m_CursorTopLeft = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+    m_CursorBottomLeft = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+    m_CursorBottomRight = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+    m_CursorHelp = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW); // TODO
+    m_CursorCross = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
+    m_CursorUpArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW); // TODO
+    m_CursorNo = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+    m_CursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    m_CursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND );
     int cur;
-    HMODULE hdll = GetModuleHandle(ANT_TWEAK_BAR_DLL);
-    if( hdll==NULL )
-        g_UseCurRsc = false;    // force the use of built-in cursors (not using resources)
-    if( g_UseCurRsc )
-        m_CursorCenter = ::LoadCursor(hdll, MAKEINTRESOURCE(IDC_CURSOR1+0));
-    else
-        m_CursorCenter  = PixmapCursor(0);
+    m_CursorCenter  = PixmapCursor(0);
     if( m_CursorCenter==NULL )
-        m_CursorCenter = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_CROSS));
-    if( g_UseCurRsc )
-        m_CursorPoint = ::LoadCursor(hdll, MAKEINTRESOURCE(IDC_CURSOR1+1));
-    else
-        m_CursorPoint   = PixmapCursor(1);
+        m_CursorCenter = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
+    m_CursorPoint   = PixmapCursor(1);
     if( m_CursorPoint==NULL )
-        m_CursorPoint = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_CROSS));
+        m_CursorPoint = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
 
     for( cur=0; cur<NB_ROTO_CURSORS; ++cur )
     {
-        if( g_UseCurRsc )
-            m_RotoCursors[cur] = ::LoadCursor(hdll, MAKEINTRESOURCE(IDC_CURSOR1+2+cur));
-        else
-            m_RotoCursors[cur] = PixmapCursor(cur+2);
+        m_RotoCursors[cur] = PixmapCursor(cur+2);
         if( m_RotoCursors[cur]==NULL )
-            m_RotoCursors[cur] = ::LoadCursor(NULL ,MAKEINTRESOURCE(IDC_CROSS));
+            m_RotoCursors[cur] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
     }
     
     m_CursorsCreated = true;
@@ -6286,42 +6194,28 @@ CTwMgr::CCursor CTwMgr::PixmapCursor(int _CurIdx)
             pict[y*4+x/8] |= (((unsigned int)(g_CurPict[_CurIdx][x+y*32]))<<(7-(x%8)));
         }
     }
-
-    unsigned char ands[32*4];
-    unsigned char xors[32*4];
-    for( y=0; y<32*4; ++y ) 
-    {
-        ands[y] = ~mask[y];
-        xors[y] = pict[y];
-    }
-
-    HMODULE hdll = GetModuleHandle(ANT_TWEAK_BAR_DLL);
-    CCursor cursor = ::CreateCursor(hdll, g_CurHot[_CurIdx][0], g_CurHot[_CurIdx][1], 32, 32, ands, xors);
- 
-    return cursor;
+    return SDL_CreateCursor(pict, mask, 32, 32, g_CurHot[_CurIdx][0], g_CurHot[_CurIdx][1]);
 }
 
 void CTwMgr::FreeCursors()
 {
-    if( !g_UseCurRsc )
-    {
-        if( m_CursorCenter!=NULL )
-        {
-            ::DestroyCursor(m_CursorCenter);
-            m_CursorCenter = NULL;
-        }
-        if( m_CursorPoint!=NULL )
-        {
-            ::DestroyCursor(m_CursorPoint);
-            m_CursorPoint = NULL;
-        }
-        for( int cur=0; cur<NB_ROTO_CURSORS; ++cur )
-            if( m_RotoCursors[cur]!=NULL )
-            {
-                ::DestroyCursor(m_RotoCursors[cur]);
-                m_RotoCursors[cur] = NULL;
-            }
-    }
+    SDL_FreeCursor(m_CursorArrow);
+    SDL_FreeCursor(m_CursorMove);
+    SDL_FreeCursor(m_CursorWE);
+    SDL_FreeCursor(m_CursorNS);
+    SDL_FreeCursor(m_CursorTopRight);
+    SDL_FreeCursor(m_CursorTopLeft);
+    SDL_FreeCursor(m_CursorBottomRight);
+    SDL_FreeCursor(m_CursorBottomLeft); 
+    SDL_FreeCursor(m_CursorHelp);
+    SDL_FreeCursor(m_CursorHand);
+    SDL_FreeCursor(m_CursorCross);
+    SDL_FreeCursor(m_CursorUpArrow);
+    SDL_FreeCursor(m_CursorNo); 
+    for( int i=0; i<NB_ROTO_CURSORS; ++i )
+        SDL_FreeCursor(m_RotoCursors[i]);
+    SDL_FreeCursor(m_CursorCenter);
+    SDL_FreeCursor(m_CursorPoint);
     m_CursorsCreated = false;
 }
 
@@ -6329,275 +6223,9 @@ void CTwMgr::SetCursor(CTwMgr::CCursor _Cursor)
 {
     if( m_CursorsCreated )
     {
-        CURSORINFO ci;
-        memset(&ci, 0, sizeof(ci));
-        ci.cbSize = sizeof(ci);
-        BOOL ok = ::GetCursorInfo(&ci);
-        if( ok && (ci.flags & CURSOR_SHOWING) )
-            ::SetCursor(_Cursor);
+        SDL_SetCursor(_Cursor);
     }
 }
-
-
-#elif defined(ANT_OSX)
-
-#include "res/TwXCursors.h"
-
-CTwMgr::CCursor CTwMgr::PixmapCursor(int _CurIdx)
-{
-    unsigned char *data;
-    int x,y;
-    
-    NSBitmapImageRep *imgr = [[NSBitmapImageRep alloc] 
-                              initWithBitmapDataPlanes: NULL
-                              pixelsWide: 32
-                              pixelsHigh: 32
-                              bitsPerSample: 1
-                              samplesPerPixel: 2
-                              hasAlpha: YES
-                              isPlanar: NO
-                              colorSpaceName: NSCalibratedWhiteColorSpace
-                              bitmapFormat: NSAlphaNonpremultipliedBitmapFormat
-                              bytesPerRow: 8
-                              bitsPerPixel: 2
-                              ];
-    data = [imgr bitmapData];
-    memset(data,0x0,32*8);
-    for (y=0;y<32;y++) {
-        for (x=0;x<32;x++) {
-            //printf("%d",g_CurMask[_CurIdx][x+y*32]);
-            data[(x>>2) + y*8] |= (unsigned char)(g_CurPict[_CurIdx][x+y*32] << 2*(3-(x&3))+1); //turn whiteon
-            data[(x>>2) + y*8] |= (unsigned char)(g_CurMask[_CurIdx][x+y*32] << 2*(3-(x&3))); //turn the alpha all the way up
-        }
-        //printf("\n");
-    }
-    NSImage *img = [[NSImage alloc] initWithSize: [imgr size]];
-    [img addRepresentation: imgr];
-    NSCursor *cur = [[NSCursor alloc] initWithImage: img hotSpot: NSMakePoint(g_CurHot[_CurIdx][0],g_CurHot[_CurIdx][1])];
-
-    [imgr autorelease];
-    [img autorelease];
-    if (cur)
-        return cur;
-    else
-        return [NSCursor arrowCursor];
-}
-
-void CTwMgr::CreateCursors()
-{
-    if (m_CursorsCreated)
-        return;
-    
-    m_CursorArrow        = [[NSCursor arrowCursor] retain];
-    m_CursorMove         = [[NSCursor crosshairCursor] retain];
-    m_CursorWE           = [[NSCursor resizeLeftRightCursor] retain];
-    m_CursorNS           = [[NSCursor resizeUpDownCursor] retain];
-    m_CursorTopRight     = [[NSCursor arrowCursor] retain]; //osx not have one
-    m_CursorTopLeft      = [[NSCursor arrowCursor] retain]; //osx not have one
-    m_CursorBottomRight  = [[NSCursor arrowCursor] retain]; //osx not have one
-    m_CursorBottomLeft   = [[NSCursor arrowCursor] retain]; //osx not have one
-    m_CursorHelp         = [[NSCursor arrowCursor] retain]; //osx not have one
-    m_CursorHand         = [[NSCursor pointingHandCursor] retain];
-    m_CursorCross        = [[NSCursor arrowCursor] retain];
-    m_CursorUpArrow      = [[NSCursor arrowCursor] retain];
-    m_CursorNo           = [[NSCursor arrowCursor] retain];
-    m_CursorIBeam        = [[NSCursor IBeamCursor] retain];
-    for (int i=0;i<NB_ROTO_CURSORS; i++)
-    {
-        m_RotoCursors[i] = [PixmapCursor(i+2) retain];
-    }
-    m_CursorCenter  = [PixmapCursor(0) retain];
-    m_CursorPoint   = [PixmapCursor(1) retain];
-    m_CursorsCreated = true;
-}
-
-void CTwMgr::FreeCursors()
-{
-    [m_CursorArrow release];
-    [m_CursorMove release];
-    [m_CursorWE release];
-    [m_CursorNS release];
-    [m_CursorTopRight release];
-    [m_CursorTopLeft release];
-    [m_CursorBottomRight release];
-    [m_CursorBottomLeft release];
-    [m_CursorHelp release];
-    [m_CursorHand release];
-    [m_CursorCross release];
-    [m_CursorUpArrow release];
-    [m_CursorNo release];
-    [m_CursorIBeam release];
-    for( int i=0; i<NB_ROTO_CURSORS; ++i )
-        [m_RotoCursors[i] release]; 
-    [m_CursorCenter release];
-    [m_CursorPoint release];
-    m_CursorsCreated = false;
-}
-
-void CTwMgr::SetCursor(CTwMgr::CCursor _Cursor)
-{
-    if (m_CursorsCreated && _Cursor) {
-        [_Cursor set];
-    }
-}
-
-
-#elif defined(ANT_UNIX)
-
-#include "res/TwXCursors.h"
-
-static XErrorHandler s_PrevErrorHandler = NULL;
-
-static int InactiveErrorHandler(Display *display, XErrorEvent *err)
-{
-    fprintf(stderr, "Ignoring Xlib error: error code %d request code %d\n", err->error_code, err->request_code);
-    // No exit!
-    return 0 ;
-}
-
-static void IgnoreXErrors()
-{
-    if( g_TwMgr!=NULL && g_TwMgr->m_CurrentXDisplay==glXGetCurrentDisplay() )
-    {
-        XFlush(g_TwMgr->m_CurrentXDisplay);
-        XSync(g_TwMgr->m_CurrentXDisplay, False);
-    }
-    s_PrevErrorHandler = XSetErrorHandler(InactiveErrorHandler);
-}
-
-static void RestoreXErrors()
-{
-    if( g_TwMgr!=NULL && g_TwMgr->m_CurrentXDisplay==glXGetCurrentDisplay() )
-    {
-        XFlush(g_TwMgr->m_CurrentXDisplay);
-        XSync(g_TwMgr->m_CurrentXDisplay, False);
-    }
-    XSetErrorHandler(s_PrevErrorHandler);
-}
-
-CTwMgr::CCursor CTwMgr::PixmapCursor(int _CurIdx)
-{ 
-    if( !m_CurrentXDisplay || !m_CurrentXWindow )
-        return XC_left_ptr;
-        
-    IgnoreXErrors();    
-
-    XColor black, white, exact;
-    Colormap colmap = DefaultColormap(m_CurrentXDisplay, DefaultScreen(m_CurrentXDisplay));
-    Status s1 = XAllocNamedColor(m_CurrentXDisplay, colmap, "black", &black, &exact);
-    Status s2 = XAllocNamedColor(m_CurrentXDisplay, colmap, "white", &white, &exact);
-    if( s1==0 || s2==0 )
-        return XC_left_ptr; // cannot allocate colors!
-    int x, y;
-    unsigned int mask[32];
-    unsigned int pict[32];
-    for( y=0; y<32; ++y )
-    {
-        mask[y] = pict[y] = 0;
-        for( x=0; x<32; ++x )
-        {
-            mask[y] |= (((unsigned int)(g_CurMask[_CurIdx][x+y*32]))<<x);
-            pict[y] |= (((unsigned int)(g_CurPict[_CurIdx][x+y*32]))<<x);
-        }
-    }       
-    Pixmap maskPix = XCreateBitmapFromData(m_CurrentXDisplay, m_CurrentXWindow, (char*)mask, 32, 32);
-    Pixmap pictPix = XCreateBitmapFromData(m_CurrentXDisplay, m_CurrentXWindow, (char*)pict, 32, 32);
-    Cursor cursor = XCreatePixmapCursor(m_CurrentXDisplay, pictPix, maskPix, &white, &black, g_CurHot[_CurIdx][0], g_CurHot[_CurIdx][1]);
-    XFreePixmap(m_CurrentXDisplay, maskPix);
-    XFreePixmap(m_CurrentXDisplay, pictPix);
-    
-    RestoreXErrors();
-    
-    if( cursor!=0 )
-        return cursor;
-    else
-        return XC_left_ptr;
-}
-
-void CTwMgr::CreateCursors()
-{
-    if( m_CursorsCreated || !m_CurrentXDisplay || !m_CurrentXWindow )
-        return;
-
-    IgnoreXErrors();
-    m_CursorArrow   = XCreateFontCursor(m_CurrentXDisplay, XC_left_ptr);
-    m_CursorMove    = XCreateFontCursor(m_CurrentXDisplay, XC_plus);
-    m_CursorWE      = XCreateFontCursor(m_CurrentXDisplay, XC_left_side);
-    m_CursorNS      = XCreateFontCursor(m_CurrentXDisplay, XC_top_side);
-    m_CursorTopRight= XCreateFontCursor(m_CurrentXDisplay, XC_top_right_corner);
-    m_CursorTopLeft = XCreateFontCursor(m_CurrentXDisplay, XC_top_left_corner);
-    m_CursorBottomRight = XCreateFontCursor(m_CurrentXDisplay, XC_bottom_right_corner);
-    m_CursorBottomLeft  = XCreateFontCursor(m_CurrentXDisplay, XC_bottom_left_corner);
-    m_CursorHelp    = XCreateFontCursor(m_CurrentXDisplay, XC_question_arrow);
-    m_CursorHand    = XCreateFontCursor(m_CurrentXDisplay, XC_hand1);
-    m_CursorCross   = XCreateFontCursor(m_CurrentXDisplay, XC_X_cursor);
-    m_CursorUpArrow = XCreateFontCursor(m_CurrentXDisplay, XC_center_ptr);
-    m_CursorNo      = XCreateFontCursor(m_CurrentXDisplay, XC_left_ptr);
-    m_CursorIBeam   = XCreateFontCursor(m_CurrentXDisplay, XC_xterm);
-    for( int i=0; i<NB_ROTO_CURSORS; ++i )
-    {
-        m_RotoCursors[i] = PixmapCursor(i+2);
-    }
-    m_CursorCenter  = PixmapCursor(0);
-    m_CursorPoint   = PixmapCursor(1);
-    m_CursorsCreated = true;
-    
-    RestoreXErrors();
-}
-
-void CTwMgr::FreeCursors()
-{
-    IgnoreXErrors();
-    
-    XFreeCursor(m_CurrentXDisplay, m_CursorArrow);
-    XFreeCursor(m_CurrentXDisplay, m_CursorMove);
-    XFreeCursor(m_CurrentXDisplay, m_CursorWE);
-    XFreeCursor(m_CurrentXDisplay, m_CursorNS);
-    XFreeCursor(m_CurrentXDisplay, m_CursorTopRight);
-    XFreeCursor(m_CurrentXDisplay, m_CursorTopLeft);
-    XFreeCursor(m_CurrentXDisplay, m_CursorBottomRight);
-    XFreeCursor(m_CurrentXDisplay, m_CursorBottomLeft); 
-    XFreeCursor(m_CurrentXDisplay, m_CursorHelp);
-    XFreeCursor(m_CurrentXDisplay, m_CursorHand);
-    XFreeCursor(m_CurrentXDisplay, m_CursorCross);
-    XFreeCursor(m_CurrentXDisplay, m_CursorUpArrow);
-    XFreeCursor(m_CurrentXDisplay, m_CursorNo); 
-    for( int i=0; i<NB_ROTO_CURSORS; ++i )
-        XFreeCursor(m_CurrentXDisplay, m_RotoCursors[i]);
-    XFreeCursor(m_CurrentXDisplay, m_CursorCenter);
-    XFreeCursor(m_CurrentXDisplay, m_CursorPoint);          
-
-    m_CursorsCreated = false;
-    
-    RestoreXErrors();   
-}
-
-void CTwMgr::SetCursor(CTwMgr::CCursor _Cursor)
-{
-    if( m_CursorsCreated && m_CurrentXDisplay && m_CurrentXWindow )
-    {
-        Display *dpy = glXGetCurrentDisplay();
-        if( dpy==g_TwMgr->m_CurrentXDisplay )
-        {
-            Window wnd = glXGetCurrentDrawable();
-            if( wnd!=g_TwMgr->m_CurrentXWindow )
-            {
-                FreeCursors();
-                g_TwMgr->m_CurrentXWindow = wnd;
-                CreateCursors();
-                // now _Cursor is not a valid cursor ID.
-            }
-            else
-            {
-                IgnoreXErrors();
-                XDefineCursor(m_CurrentXDisplay, m_CurrentXWindow, _Cursor);
-                RestoreXErrors();
-            }
-        }
-    }
-}
-
-#endif //defined(ANT_UNIX)
 
 //  ---------------------------------------------------------------------------
 

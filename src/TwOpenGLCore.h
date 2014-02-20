@@ -15,6 +15,7 @@
 #define ANT_TW_OPENGL_CORE_INCLUDED
 
 #include "TwGraph.h"
+#include ATB_OPENGL_HEADER
 
 //  ---------------------------------------------------------------------------
 

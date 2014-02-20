@@ -30,7 +30,7 @@ static int g_CurHot[][2] =
 };
 
 
-static bool g_CurPict[][32*32] = 
+static unsigned char g_CurPict[][32*32] = 
 {
     {   // curs00
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
@@ -469,7 +469,7 @@ static bool g_CurPict[][32*32] =
 };
 
 
-static bool g_CurMask[][32*32] = 
+static unsigned char g_CurMask[][32*32] = 
 {
     {   // mask00
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 

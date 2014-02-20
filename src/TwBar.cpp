@@ -13,6 +13,7 @@
 #include "TwMgr.h"
 #include "TwBar.h"
 #include "TwColors.h"
+#include "SDL.h"
   
 using namespace std;
 
@@ -34,10 +35,10 @@ PerfTimer g_BarTimer;
 #define ANT_SET_CURSOR(_Name)       g_TwMgr->SetCursor(g_TwMgr->m_Cursor##_Name)
 #define ANT_SET_ROTO_CURSOR(_Num)   g_TwMgr->SetCursor(g_TwMgr->m_RotoCursors[_Num])
 
-#if !defined(ANT_WINDOWS)
+#if !defined(_WIN32)
 #   define _stricmp strcasecmp
 #   define _strdup  strdup
-#endif  // defined(ANT_WINDOWS)
+#endif
 
 #if !defined(M_PI)
 #   define M_PI 3.1415926535897932384626433832795
@@ -4932,7 +4933,7 @@ void CTwBar::Draw(int _DrawPart)
             {
                 int y0 = m_PosY + m_VarY0 + m_HighlightedLine*(m_Font->m_CharHeight+m_LineSep);
                 Gr->DrawRect(m_PosX+LevelSpace+6+LevelSpace*m_HierTags[m_HighlightedLine].m_Level, y0+1, m_PosX+m_VarX2, y0+m_Font->m_CharHeight-1+m_LineSep-1, m_ColHighBg0, m_ColHighBg0, m_ColHighBg1, m_ColHighBg1);
-                int eps = (g_TwMgr->m_GraphAPI==TW_OPENGL || g_TwMgr->m_GraphAPI==TW_OPENGL_CORE) ? 1 : 0;
+                int eps = (g_TwMgr->m_GraphAPI==TW_OPENGL_CORE) ? 1 : 0;
                 if( !m_EditInPlace.m_Active )
                     Gr->DrawLine(m_PosX+LevelSpace+6+LevelSpace*m_HierTags[m_HighlightedLine].m_Level, y0+m_Font->m_CharHeight+m_LineSep-1+eps, m_PosX+m_VarX2, y0+m_Font->m_CharHeight+m_LineSep-1+eps, m_ColUnderline);
             }
@@ -4993,7 +4994,7 @@ void CTwBar::Draw(int _DrawPart)
                         // draw color value
                         if( Grp->m_Vars.size()>0 && Grp->m_Vars[0]!=NULL && !Grp->m_Vars[0]->IsGroup() )
                             static_cast<CTwVarAtom *>(Grp->m_Vars[0])->ValueToDouble(); // force ext update
-                        int ydecal = (g_TwMgr->m_GraphAPI==TW_OPENGL || g_TwMgr->m_GraphAPI==TW_OPENGL_CORE) ? 1 : 0;
+                        int ydecal = (g_TwMgr->m_GraphAPI==TW_OPENGL_CORE) ? 1 : 0;
                         const int checker = 8;
                         for( int c=0; c<checker; ++c )
                             Gr->DrawRect(m_PosX+m_VarX1+(c*(m_VarX2-m_VarX1))/checker, yh+1+ydecal+((c%2)*(m_Font->m_CharHeight-2))/2, m_PosX+m_VarX1-1+((c+1)*(m_VarX2-m_VarX1))/checker, yh+ydecal+(((c%2)+1)*(m_Font->m_CharHeight-2))/2, 0xffffffff);
@@ -5593,7 +5594,7 @@ bool CTwBar::MouseMotion(int _X, int _Y)
             else if( InBar && m_NbDisplayedLines<m_NbHierLines && _X>=m_PosX+m_VarX2+2 && _X<m_PosX+m_Width-2 && _Y>=m_ScrollY0 && _Y<m_ScrollY1 )
             {
                 m_HighlightScroll = true;
-              #ifdef ANT_WINDOWS
+              #ifdef _WIN32
                 ANT_SET_CURSOR(NS);
               #else
                 ANT_SET_CURSOR(Arrow);
@@ -5736,7 +5737,7 @@ bool CTwBar::MouseMotion(int _X, int _Y)
                         m_FirstLine = m_FirstLine0+dl;
                     NotUpToDate();
                 }
-              #ifdef ANT_WINDOWS
+              #ifdef _WIN32
                 ANT_SET_CURSOR(NS);
               #else
                 ANT_SET_CURSOR(Arrow);
@@ -5938,7 +5939,7 @@ bool CTwBar::MouseMotion(int _X, int _Y)
             if( !m_IsHelpBar )
                 ANT_SET_CURSOR(Arrow);
             else
-              #ifdef ANT_WINDOWS
+              #ifdef _WIN32
                 ANT_SET_CURSOR(Help);
               #else
                 ANT_SET_CURSOR(Arrow);
@@ -5993,7 +5994,7 @@ bool CTwBar::MouseMotion(int _X, int _Y)
 
 //  ---------------------------------------------------------------------------
 
-#ifdef ANT_WINDOWS
+#ifdef MSVC
 #   pragma optimize("", off)
 //  disable optimizations because the conversion of Enum from unsigned int to double is not always exact if optimized and GraphAPI=DirectX !
 #endif
@@ -6018,7 +6019,7 @@ static void ANT_CALL PopupCallback(void *_ClientData)
         g_TwMgr->m_PopupBar = NULL;
     }
 }
-#ifdef ANT_WINDOWS
+#ifdef MSVC
 #   pragma optimize("", on)
 #endif
 
@@ -6273,7 +6274,7 @@ bool CTwBar::MouseButton(ETwMouseButtonID _Button, bool _Pressed, int _X, int _Y
             m_MouseOriginX = _X;
             m_MouseOriginY = _Y;
             m_FirstLine0 = m_FirstLine;
-          #ifdef ANT_WINDOWS
+          #ifdef _WIN32
             ANT_SET_CURSOR(NS);
           #else
             ANT_SET_CURSOR(Arrow);
@@ -6423,7 +6424,7 @@ bool CTwBar::MouseButton(ETwMouseButtonID _Button, bool _Pressed, int _X, int _Y
         {
             /*
             const char *WebPage = "http://";
-            #if defined ANT_WINDOWS
+            #if defined _WIN32
                 ShellExecute(NULL, "open", WebPage, NULL, NULL, SW_SHOWNORMAL);
             #elif defined ANT_UNIX
                 // brute force: try all the possible browsers (I don't know how to find the default one; someone?)
@@ -7680,45 +7681,8 @@ bool CTwBar::EditInPlaceGetClipboard(std::string *_OutString)
     assert( _OutString!=NULL );
     *_OutString = m_EditInPlace.m_Clipboard; // default implementation
 
-#if defined ANT_WINDOWS
-
-    if( !IsClipboardFormatAvailable(CF_TEXT) )
-        return false;
-    if( !OpenClipboard(NULL) )
-        return false;
-    HGLOBAL TextHandle = GetClipboardData(CF_TEXT); 
-    if( TextHandle!=NULL ) 
-    { 
-        const char *TextString = static_cast<char *>(GlobalLock(TextHandle));
-        if( TextHandle!=NULL )
-        {
-            *_OutString = TextString;
-            GlobalUnlock(TextHandle);
-        } 
-    }
-    CloseClipboard(); 
-
-#elif defined ANT_UNIX
-
-    if( g_TwMgr->m_CurrentXDisplay!=NULL )
-    {
-        int NbBytes = 0;
-        char *Buffer = XFetchBytes(g_TwMgr->m_CurrentXDisplay, &NbBytes);
-        if( Buffer!=NULL )
-        {
-            if( NbBytes>0 )
-            {
-                char *Text = new char[NbBytes+1];
-                memcpy(Text, Buffer, NbBytes);
-                Text[NbBytes] = '\0';
-                *_OutString = Text;
-                delete[] Text;
-            }
-            XFree(Buffer);
-        }
-    }
-
-#endif
+    if(SDL_HasClipboardText())
+        *_OutString = SDL_GetClipboardText();
 
     return true;
 }
@@ -7730,37 +7694,7 @@ bool CTwBar::EditInPlaceSetClipboard(const std::string& _String)
         return false;   // keep last clipboard
     m_EditInPlace.m_Clipboard = _String; // default implementation
 
-#if defined ANT_WINDOWS
-
-    if( !OpenClipboard(NULL) )
-        return false;
-    EmptyClipboard();
-    HGLOBAL TextHandle = GlobalAlloc(GMEM_MOVEABLE, _String.length()+1);
-    if( TextHandle==NULL )
-    { 
-        CloseClipboard(); 
-        return false; 
-    }
-    char *TextString = static_cast<char *>(GlobalLock(TextHandle));
-    memcpy(TextString, _String.c_str(), _String.length());
-    TextString[_String.length()] = '\0';
-    GlobalUnlock(TextHandle); 
-    SetClipboardData(CF_TEXT, TextHandle);
-    CloseClipboard();
-
-#elif defined ANT_UNIX
-
-    if( g_TwMgr->m_CurrentXDisplay!=NULL )
-    {
-        XSetSelectionOwner(g_TwMgr->m_CurrentXDisplay, XA_PRIMARY, None, CurrentTime);
-        char *Text = new char[_String.length()+1];
-        memcpy(Text, _String.c_str(), _String.length());
-        Text[_String.length()] = '\0';
-        XStoreBytes(g_TwMgr->m_CurrentXDisplay, Text, _String.length());
-        delete[] Text;
-    }
-
-#endif
+    return SDL_SetClipboardText(_String.c_str()) == 0;
 
     return true;
 }
