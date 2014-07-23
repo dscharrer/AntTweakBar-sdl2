@@ -18,7 +18,7 @@ if(NOT DEFINED ATB_OPENGL_HEADER)
 	set(ATB_OPENGL_HEADER GL/glcorearb.h)
 endif()
 
-set(CMAKE_CXX_FLAGS "-O3 -Wall -fno-strict-aliasing") # sigh
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fno-strict-aliasing") # sigh
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
