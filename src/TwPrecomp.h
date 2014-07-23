@@ -47,7 +47,7 @@
 
 #if !defined(_WIN32)
 #   include <unistd.h>
-#   include <malloc.h>
+#   include <stdlib.h>
 #else
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
