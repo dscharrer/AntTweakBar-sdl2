@@ -19,7 +19,9 @@ if(NOT DEFINED ATB_OPENGL_HEADER)
 endif()
 
 if(NOT MSVC)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -fno-strict-aliasing") # sigh
+	string(REGEX REPLACE "-W[^ ]*" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing") # sigh
 endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
