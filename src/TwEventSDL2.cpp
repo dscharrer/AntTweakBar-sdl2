@@ -53,11 +53,34 @@ int  TW_CALL TwEventSDL(const void *sdlEvent, unsigned char sdlMajorVersion, uns
         s_KeyMod = 0;
         break;
     case SDL_KEYDOWN:
-        if( event->key.keysym.sym & SDLK_SCANCODE_MASK )
         {
             int key = 0;
             switch( event->key.keysym.sym )
             {
+            case SDLK_BACKSPACE:
+                key = TW_KEY_BACKSPACE;
+                break;
+            case SDLK_TAB:
+                key = TW_KEY_TAB;
+                break;
+            case SDLK_CLEAR:
+                key = TW_KEY_CLEAR;
+                break;
+            case SDLK_RETURN:
+                key = TW_KEY_RETURN;
+                break;
+            case SDLK_PAUSE:
+                key = TW_KEY_PAUSE;
+                break;
+            case SDLK_ESCAPE:
+                key = TW_KEY_ESCAPE;
+                break;
+            case SDLK_SPACE:
+                key = TW_KEY_SPACE;
+                break;
+            case SDLK_DELETE:
+                key = TW_KEY_DELETE;
+                break;
             case SDLK_UP:
                 key = TW_KEY_UP;
                 break;
@@ -92,7 +115,7 @@ int  TW_CALL TwEventSDL(const void *sdlEvent, unsigned char sdlMajorVersion, uns
             if( key!=0 )
                 handled = TwKeyPressed(key, event->key.keysym.mod);
         }
-        else if( event->key.keysym.mod & TW_KMOD_ALT )
+        if( event->key.keysym.mod & TW_KMOD_ALT )
             handled = TwKeyPressed(event->key.keysym.sym & 0xFF, event->key.keysym.mod);
         else
             s_KeyMod = event->key.keysym.mod;
