@@ -23,7 +23,7 @@ module, but also because you need to define some variables.
     # Set this to whatever your OpenGL loader include file is.
     # On Linux you could probably get away with GL/gl.h
     # This must be defined before everything else.
-    # You could also pass this on the CMake command-cone as -DATB_OPENGL_HEADER=...
+    # You could also pass this on the CMake command-line as -DATB_OPENGL_HEADER=...
     set(ATB_OPENGL_HEADER GLXW/glxw.h)
     
     # Now include the subdirectory, easy enough!
